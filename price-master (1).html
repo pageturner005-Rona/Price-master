@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Price Master – Purchase Tracker</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1a1d23;--mu:#5b6270;--bd:#d9dde4;--ac:#2557d6;--ac2:#fff;--gr:#0a7d3c;--grbg:#dff5e8;--rd:#b42318}
+@media(prefers-color-scheme:dark){:root{--bg:#12141a;--card:#1c1f27;--tx:#eceef2;--mu:#9aa3b2;--bd:#343a46;--ac:#6c93ff;--ac2:#0d1220;--gr:#5fd68c;--grbg:#143824;--rd:#ff8a80}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{padding:12px 16px;font-weight:700;font-size:1.15rem}
+nav{display:flex;gap:4px;padding:0 8px;overflow-x:auto;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--bg);z-index:5}
+nav button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;color:var(--mu);font:inherit;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ac);border-color:var(--ac);font-weight:600}
+main{max-width:980px;margin:0 auto;padding:12px}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:.85rem;color:var(--mu);margin-bottom:3px}
+input,select,button.b{font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);width:100%;min-height:42px}
+button.b{width:auto;cursor:pointer;background:var(--card)}button.p{background:var(--ac);color:var(--ac2);border-color:var(--ac);font-weight:600}
+button.d{color:var(--rd)}:focus-visible{outline:3px solid var(--ac);outline-offset:1px}
+.rate{font-size:1.1rem;font-weight:700;color:var(--ac)}.err{color:var(--rd);font-size:.85rem;min-height:1.2em}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}th{cursor:pointer;color:var(--mu)}td.n,th.n{text-align:right}
+tr.best td{background:var(--grbg);color:var(--gr);font-weight:600}.mu{color:var(--mu)}
+.big{font-size:1.5rem;font-weight:700}.bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:.88rem}
+.bar i{display:block;height:14px;background:var(--ac);border-radius:3px}.bar span:first-child{width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+svg text{fill:var(--mu);font-size:11px}.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none}.toast.on{opacity:1}
+</style></head><body>
+<header>🛒 Price Master</header>
+<nav role="tablist" id="tabs"></nav>
+<main>
+<!-- ADD -->
+<section id="t-add" class="on"><form id="f" class="card" novalidate>
+<h2 id="ftitle" style="margin:0 0 10px;font-size:1.05rem">Add purchase</h2>
+<div class="grid">
+<div><label for="date">Date *</label><input id="date" type="date" required></div>
+<div><label for="store">Store *</label><input id="store" list="dl-store" autocomplete="off" required></div>
+<div><label for="cat">Category *</label><input id="cat" list="dl-cat" autocomplete="off" required></div>
+<div><label for="prod">Product *</label><input id="prod" list="dl-prod" autocomplete="off" required></div>
+<div><label for="qty">Quantity *</label><input id="qty" type="number" step="any" min="0" inputmode="decimal" required></div>
+<div><label for="unit">Unit</label><select id="unit"></select></div>
+<div><label for="price">Total price paid *</label><input id="price" type="number" step="any" min="0" inputmode="decimal" required></div>
+<div><label>Unit rate</label><div class="rate" id="rate" aria-live="polite">–</div></div>
+<div style="grid-column:1/-1"><label for="notes">Notes / brand</label><input id="notes"></div></div>
+<div class="err" id="err" role="alert"></div>
+<div class="row"><button class="b p" type="submit" id="save">Save (Enter)</button><button class="b" type="button" id="cancel" hidden>Cancel edit</button></div>
+<datalist id="dl-store"></datalist><datalist id="dl-cat"></datalist><datalist id="dl-prod"></datalist></form></section>
+<!-- HISTORY -->
+<section id="t-hist"><div class="card"><div class="grid">
+<div><label for="f-from">From</label><input id="f-from" type="date"></div><div><label for="f-to">To</label><input id="f-to" type="date"></div>
+<div><label for="f-store">Store</label><select id="f-store"></select></div><div><label for="f-cat">Category</label><select id="f-cat"></select></div>
+<div><label for="f-q">Product search</label><input id="f-q" type="search"></div>
+<div><label for="f-min">Min price</label><input id="f-min" type="number" min="0"></div><div><label for="f-max">Max price</label><input id="f-max" type="number" min="0"></div></div>
+<div class="row"><button class="b" id="f-clear">Clear filters</button><span id="f-sum" class="mu" aria-live="polite"></span></div></div>
+<div class="card"><div class="tw"><table id="tbl"></table></div><div class="row"><button class="b" id="pv">‹ Prev</button><span id="pg" class="mu"></span><button class="b" id="nx">Next ›</button></div></div></section>
+<!-- CHEAPEST -->
+<section id="t-cheap"><div class="card"><label for="c-prod">Product</label><input id="c-prod" list="dl-prod" placeholder="Type or pick a product" autocomplete="off"><div id="c-out"></div></div></section>
+<!-- DASH -->
+<section id="t-dash"></section>
+<!-- DATA -->
+<section id="t-data"><div class="card"><h2 style="margin:0 0 8px;font-size:1.05rem">Settings</h2><label for="cur">Currency symbol</label><input id="cur" style="max-width:100px" maxlength="4"><div class="mu" id="stor" style="margin-top:8px"></div></div>
+<div class="card"><h2 style="margin:0 0 8px;font-size:1.05rem">Cloud sync (Supabase)</h2><div class="grid">
+<div><label for="c-url">Project URL</label><input id="c-url" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
+<div><label for="c-key">Anon (public) key</label><input id="c-key" autocomplete="off"></div>
+<div><label for="c-em">Email</label><input id="c-em" type="email" autocomplete="username"></div>
+<div><label for="c-pw">Password (min 6 chars)</label><input id="c-pw" type="password" autocomplete="current-password"></div></div>
+<div class="row"><button class="b p" id="c-in">Sign in</button><button class="b" id="c-up">Sign up</button><button class="b" id="c-sync">Sync now</button><button class="b" id="c-out">Sign out</button></div>
+<div class="mu" id="cstat" style="margin-top:8px" aria-live="polite"></div></div>
+<div class="card"><h2 style="margin:0 0 8px;font-size:1.05rem">Data</h2><div class="row">
+<button class="b" id="x-csv">Export CSV</button><button class="b" id="x-json">Export JSON</button>
+<button class="b" id="imp">Import CSV/JSON</button><input id="file" type="file" accept=".csv,.json" hidden></div>
+<div class="row"><button class="b" id="s-load">Load sample data</button><button class="b" id="s-rm">Remove sample data</button><button class="b d" id="clr">Clear all data</button></div></div></section>
+</main><div class="toast" id="toast" role="status"></div>
+<script>
+'use strict';
+/* ============ 1. DATA LAYER ============ */
+const KEY='pricemaster_v1', DEF_CATS=['Grocery','Electronics','Medicine','Household'];
+// unit -> [group, factor to base]; base: g, ml, piece, pack. Display group: kg, litre, piece, pack
+const UNITS={kg:['m',1000],g:['m',1],litre:['v',1000],ml:['v',1],piece:['p',1],pack:['k',1]};
+const GLAB={m:'kg',v:'litre',p:'piece',k:'pack'}, GMUL={m:1000,v:1000,p:1,k:1};
+let S={records:[],settings:{cur:'₹'}}, memOnly=false, edit=null, sort={k:'date',d:-1}, page=1;
+const $=id=>document.getElementById(id);
+const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10));
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const money=n=>S.settings.cur+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nrate=r=>{const [g,f]=UNITS[r.unit];return r.price/(r.qty*f)*GMUL[g]}; // price per kg/litre/piece/pack
+function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j){S.records=j.records||[];S.settings=Object.assign(S.settings,j.settings)}}catch(e){memOnly=true}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));memOnly=false}catch(e){memOnly=true}$('stor').textContent=memOnly?'⚠ Browser storage unavailable – data is kept only until you close this page. Export regularly.':'A local copy is also kept in this browser (offline cache).'}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
+const sig=r=>[r.date,norm(r.store),norm(r.product),r.qty,r.unit,r.price].join('|');
+function clean(o){const r={id:o.id||uid(),date:String(o.date||'').slice(0,10),store:String(o.store||'').trim(),category:String(o.category||'').trim(),product:String(o.product||'').trim(),qty:+o.qty,unit:o.unit,price:+o.price,notes:String(o.notes||'').trim(),sample:!!o.sample};
+ if(!/^\d{4}-\d\d-\d\d$/.test(r.date)||!r.store||!r.category||!r.product||!(r.qty>0)||!(r.price>=0)||!UNITS[r.unit])return null;r.rate=r.price/r.qty;return r}
+function addMany(list){const seen=new Set(S.records.map(sig));let a=0,d=0,bad=0;const add=[];for(const o of list){const r=clean(o);if(!r){bad++;continue}if(seen.has(sig(r))){d++;continue}if(S.records.some(x=>x.id===r.id))r.id=uid();seen.add(sig(r));S.records.push(r);add.push(r);a++}save();cloudUp(add);renderAll();return `Added ${a}, duplicates skipped ${d}, invalid ${bad}`}
+
+/* ============ 2. FORM / ENTRY ============ */
+const fields=['date','store','cat','prod','qty','unit','price','notes'];
+function fillUnits(){$('unit').innerHTML=Object.keys(UNITS).map(u=>`<option>${u}</option>`).join('')}
+function liveRate(){const q=+$('qty').value,p=+$('price').value;$('rate').textContent=q>0&&p>=0&&$('price').value!==''?`${money(p/q)} / ${$('unit').value}`:'–'}
+function resetForm(keep){edit=null;$('ftitle').textContent='Add purchase';$('save').textContent='Save (Enter)';$('cancel').hidden=true;
+ ['prod','qty','price','notes'].forEach(i=>$(i).value='');if(!keep){$('store').value='';$('cat').value='';$('date').value=today()}liveRate()}
+$('f').addEventListener('submit',e=>{e.preventDefault();
+ const o={id:edit,date:$('date').value,store:$('store').value,category:$('cat').value,product:$('prod').value,qty:$('qty').value,unit:$('unit').value,price:$('price').value,notes:$('notes').value};
+ let m='';if(!o.date)m='Date is required.';else if(!o.store.trim())m='Store is required.';else if(!o.category.trim())m='Category is required.';else if(!o.product.trim())m='Product is required.';else if(!(+o.qty>0))m='Quantity must be a positive number.';else if(o.price===''||!(+o.price>=0))m='Price must be a number ≥ 0.';
+ $('err').textContent=m;if(m)return;
+ const r=clean(o);if(edit){const i=S.records.findIndex(x=>x.id===edit);r.sample=S.records[i].sample;S.records[i]=r}else S.records.push(r);
+ save();cloudUp([r]);toast(edit?'Updated':'Saved');resetForm(true);renderAll();$('prod').focus()});
+['qty','price','unit'].forEach(i=>$(i).addEventListener('input',liveRate));
+$('cancel').onclick=()=>{resetForm(true);$('err').textContent=''};
+function startEdit(id){const r=S.records.find(x=>x.id===id);if(!r)return;edit=id;
+ $('date').value=r.date;$('store').value=r.store;$('cat').value=r.category;$('prod').value=r.product;$('qty').value=r.qty;$('unit').value=r.unit;$('price').value=r.price;$('notes').value=r.notes;
+ $('ftitle').textContent='Edit purchase';$('save').textContent='Update';$('cancel').hidden=false;liveRate();tab('add')}
+function uniq(arr){const m=new Map();arr.forEach(v=>{const k=norm(v);if(k&&!m.has(k))m.set(k,String(v).trim())});return [...m.values()].sort((a,b)=>a.localeCompare(b))}
+function renderLists(){const opt=a=>a.map(v=>`<option value="${esc(v)}">`).join('');
+ $('dl-store').innerHTML=opt(uniq(S.records.map(r=>r.store)));$('dl-cat').innerHTML=opt(uniq([...DEF_CATS,...S.records.map(r=>r.category)]));$('dl-prod').innerHTML=opt(uniq(S.records.map(r=>r.product)));
+ for(const [id,key,lab] of [['f-store','store','All stores'],['f-cat','category','All categories']]){const el=$(id),v=el.value;el.innerHTML=`<option value="">${lab}</option>`+uniq(S.records.map(r=>r[key])).map(s=>`<option value="${esc(norm(s))}">${esc(s)}</option>`).join('');el.value=v}}
+
+/* ============ 3. FILTERS + HISTORY TABLE ============ */
+function filtered(){const f=$('f-from').value,t=$('f-to').value,st=$('f-store').value,ct=$('f-cat').value,q=norm($('f-q').value),mn=$('f-min').value,mx=$('f-max').value;
+ return S.records.filter(r=>(!f||r.date>=f)&&(!t||r.date<=t)&&(!st||norm(r.store)===st)&&(!ct||norm(r.category)===ct)&&(!q||norm(r.product).includes(q))&&(mn===''||r.price>=+mn)&&(mx===''||r.price<=+mx))}
+const COLS=[['date','Date'],['store','Store'],['category','Category'],['product','Product'],['qty','Qty'],['price','Price','n'],['rate','Unit rate','n']];
+function renderHist(){const rows=filtered();
+ const k=sort.k;rows.sort((a,b)=>{let x=a[k],y=b[k];if(typeof x==='string'){x=norm(x);y=norm(y)}return (x<y?-1:x>y?1:0)*sort.d||a.date.localeCompare(b.date)});
+ const tot=rows.reduce((s,r)=>s+r.price,0);$('f-sum').textContent=`${rows.length} result${rows.length==1?'':'s'} · Total ${money(tot)}`;
+ const PS=25,pages=Math.max(1,Math.ceil(rows.length/PS));page=Math.min(page,pages);const sl=rows.slice((page-1)*PS,page*PS);
+ $('tbl').innerHTML=`<thead><tr>${COLS.map(([c,l,n])=>`<th class="${n||''}" data-k="${c}" tabindex="0" role="button" aria-sort="${sort.k===c?(sort.d>0?'ascending':'descending'):'none'}">${l}${sort.k===c?(sort.d>0?' ▲':' ▼'):''}</th>`).join('')}<th>Actions</th></tr></thead><tbody>`+
+ (sl.length?sl.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.store)}</td><td>${esc(r.category)}</td><td title="${esc(r.notes)}">${esc(r.product)}${r.notes?' <span class="mu">• '+esc(r.notes)+'</span>':''}</td><td>${r.qty} ${r.unit}</td><td class="n">${money(r.price)}</td><td class="n">${money(r.rate)}/${r.unit}</td><td><button class="b" data-e="${r.id}" aria-label="Edit">✏️</button> <button class="b d" data-d="${r.id}" aria-label="Delete">🗑</button></td></tr>`).join(''):`<tr><td colspan="8" class="mu">No purchases to show.</td></tr>`)+'</tbody>';
+ $('pg').textContent=`Page ${page} / ${pages}`;$('pv').disabled=page<=1;$('nx').disabled=page>=pages}
+$('tbl').addEventListener('click',e=>{const th=e.target.closest('th[data-k]');if(th){const c=th.dataset.k;sort=sort.k===c?{k:c,d:-sort.d}:{k:c,d:1};renderHist();return}
+ const b=e.target.closest('button');if(!b)return;if(b.dataset.e)startEdit(b.dataset.e);if(b.dataset.d&&confirm('Delete this purchase?')){S.records=S.records.filter(r=>r.id!==b.dataset.d);save();cloudDel([b.dataset.d]);renderAll()}});
+$('tbl').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('th[data-k]'))e.target.click()});
+$('pv').onclick=()=>{page--;renderHist()};$('nx').onclick=()=>{page++;renderHist()};
+['f-from','f-to','f-store','f-cat','f-q','f-min','f-max'].forEach(i=>$(i).addEventListener('input',()=>{page=1;renderHist()}));
+$('f-clear').onclick=()=>{['f-from','f-to','f-store','f-cat','f-q','f-min','f-max'].forEach(i=>$(i).value='');page=1;renderHist()};
+
+/* ============ 4. CHEAPEST FINDER + CHARTS ============ */
+function barChart(items,lab){const mx=Math.max(...items.map(i=>i[1]))||1;
+ return items.map(([n,v],i)=>`<div class="bar"><span>${esc(n)}</span><i style="width:${Math.max(2,v/mx*50)}%;${i==0?'background:var(--gr)':''}"></i><span>${lab(v)}</span></div>`).join('')}
+function lineChart(pts,unitLab){if(pts.length<2)return '<p class="mu">Need at least 2 purchases for a price history.</p>';
+ const W=600,H=220,L=48,B=28,T=10,R=10,xs=pts.map(p=>p.t),ys=pts.map(p=>p.v),x0=Math.min(...xs),x1=Math.max(...xs)||1,y0=Math.min(...ys)*.95,y1=Math.max(...ys)*1.05||1;
+ const X=t=>L+(x1===x0?.5:(t-x0)/(x1-x0))*(W-L-R),Y=v=>T+(1-(v-y0)/((y1-y0)||1))*(H-T-B);
+ let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Price history per ${unitLab}"><line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="var(--bd)"/><line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}" stroke="var(--bd)"/>`;
+ s+=`<text x="2" y="${Y(y1)+8}">${y1.toFixed(1)}</text><text x="2" y="${Y(y0)}">${y0.toFixed(1)}</text><text x="${L}" y="${H-8}">${pts[0].d}</text><text x="${W-R}" y="${H-8}" text-anchor="end">${pts[pts.length-1].d}</text>`;
+ s+=`<polyline fill="none" stroke="var(--ac)" stroke-width="2" points="${pts.map(p=>X(p.t)+','+Y(p.v)).join(' ')}"/>`+pts.map(p=>`<circle cx="${X(p.t)}" cy="${Y(p.v)}" r="4" fill="var(--ac)"><title>${esc(p.s)} ${p.d}: ${p.v.toFixed(2)}</title></circle>`).join('')+'</svg>';return s}
+function renderCheap(){const q=norm($('c-prod').value),out=$('c-out');
+ if(!S.records.length){out.innerHTML='<p class="mu">No data yet. Add purchases or load sample data.</p>';return}
+ if(!q){out.innerHTML='<p class="mu">Select a product to compare stores.</p>';return}
+ let rs=S.records.filter(r=>norm(r.product)===q);if(!rs.length)rs=S.records.filter(r=>norm(r.product).includes(q));
+ if(!rs.length){out.innerHTML='<p class="mu">No matching product.</p>';return}
+ const cnt={};rs.forEach(r=>{const g=UNITS[r.unit][0];cnt[g]=(cnt[g]||0)+1});const g=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+ const skipped=rs.length-cnt[g];rs=rs.filter(r=>UNITS[r.unit][0]===g).sort((a,b)=>a.date.localeCompare(b.date));
+ const by={};rs.forEach(r=>{const k=norm(r.store);(by[k]=by[k]||{n:r.store,l:[]}).l.push(r)});
+ const st=Object.values(by).map(o=>{const v=o.l.map(nrate),last=o.l[o.l.length-1];return {n:o.n,min:Math.min(...v),avg:v.reduce((a,b)=>a+b,0)/v.length,latest:nrate(last),date:last.date,c:o.l.length}}).sort((a,b)=>a.avg-b.avg);
+ const best=st[0].avg,U=GLAB[g],f=v=>money(v);
+ out.innerHTML=`<p class="mu">Rates per <b>${U}</b> (g/kg and ml/litre normalised). Ranked by average rate.${skipped?` ${skipped} purchase(s) in incompatible units were excluded.`:''}</p>
+ <div class="tw"><table><thead><tr><th>#</th><th>Store</th><th class="n">Lowest</th><th class="n">Average</th><th class="n">Latest</th><th>Last bought</th><th class="n">Buys</th><th class="n">vs cheapest</th></tr></thead><tbody>`+
+ st.map((s,i)=>`<tr class="${i==0?'best':''}"><td>${i+1}</td><td>${esc(s.n)}${i==0?' ✓':''}</td><td class="n">${f(s.min)}</td><td class="n">${f(s.avg)}</td><td class="n">${f(s.latest)}</td><td>${s.date}</td><td class="n">${s.c}</td><td class="n">${i==0?'–':'+'+((s.avg/best-1)*100).toFixed(1)+'%'}</td></tr>`).join('')+'</tbody></table></div>'+
+ `<h3>Average rate by store (per ${U})</h3>${barChart(st.map(s=>[s.n,s.avg]),f)}<h3>Price history (per ${U})</h3>`+
+ lineChart(rs.map(r=>({t:Date.parse(r.date),d:r.date,v:nrate(r),s:r.store})),U)}
+$('c-prod').addEventListener('input',renderCheap);
+
+/* ============ 5. DASHBOARD ============ */
+function groupSum(rs,key){const m={};rs.forEach(r=>{const k=norm(r[key]);(m[k]=m[k]||[r[key],0])[1]+=r.price});return Object.values(m).sort((a,b)=>b[1]-a[1])}
+function renderDash(){const rs=S.records,ym=today().slice(0,7),mo=rs.filter(r=>r.date.slice(0,7)===ym),sp=a=>a.reduce((s,r)=>s+r.price,0);
+ const cnt={};rs.forEach(r=>{const k=norm(r.product);(cnt[k]=cnt[k]||[r.product,0])[1]++});const top=Object.values(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ const card=(t,b)=>`<div class="card"><h3 style="margin:0 0 6px;font-size:1rem">${t}</h3>${b}</div>`,e='<p class="mu">No data yet.</p>';
+ $('t-dash').innerHTML=`<div class="grid">${card('Spent this month',`<div class="big">${money(sp(mo))}</div><span class="mu">${mo.length} purchases</span>`)}${card('All time',`<div class="big">${money(sp(rs))}</div><span class="mu">${rs.length} purchases</span>`)}</div>`+
+ card('Spend by category',rs.length?barChart(groupSum(rs,'category'),money):e)+card('Spend by store',rs.length?barChart(groupSum(rs,'store'),money):e)+card('Top 5 most purchased',top.length?barChart(top,v=>v+'×'):e)}
+
+/* ============ 6. IMPORT / EXPORT / SETTINGS ============ */
+const HDR=['id','date','store','category','product','qty','unit','price','rate','notes'];
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1e3)}
+$('x-json').onclick=()=>dl('purchases.json',JSON.stringify(S.records,null,1),'application/json');
+$('x-csv').onclick=()=>dl('purchases.csv',[HDR.join(','),...S.records.map(r=>HDR.map(h=>`"${String(r[h]??'').replace(/"/g,'""')}"`).join(','))].join('\n'),'text/csv');
+function parseCSV(t){const rows=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}else if(c=='"')q=true;else if(c==','){row.push(f);f=''}else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;row.push(f);f='';if(row.some(x=>x!==''))rows.push(row);row=[]}else f+=c}
+ row.push(f);if(row.some(x=>x!==''))rows.push(row);const h=(rows.shift()||[]).map(x=>x.trim().toLowerCase());return rows.map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]])))}
+$('imp').onclick=()=>$('file').click();
+$('file').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const rd=new FileReader();rd.onload=()=>{try{const list=fl.name.toLowerCase().endsWith('.json')?JSON.parse(rd.result):parseCSV(rd.result);alert(addMany(Array.isArray(list)?list:list.records||[]))}catch(x){alert('Import failed: '+x.message)}};rd.readAsText(fl);e.target.value=''};
+const SAMPLE=[['2026-10-02','Local Mart','Grocery','Basmati Rice',5,'kg',410],['2026-10-20','Big Bazaar','Grocery','Basmati Rice',10,'kg',760],['2026-11-05','DMart','Grocery','Basmati Rice',5,'kg',325],['2026-10-10','DMart','Grocery','Sunflower Oil',1,'litre',128],['2026-11-06','Local Mart','Grocery','Sunflower Oil',500,'ml',72],['2026-11-08','Big Bazaar','Grocery','sunflower oil',1,'litre',135],['2026-10-15','MedPlus','Medicine','Paracetamol 500mg',1,'pack',32],['2026-11-02','Apollo Pharmacy','Medicine','Paracetamol 500mg',1,'pack',38],['2026-11-09','DMart','Household','Dish Soap',2,'piece',90],['2026-11-11','Local Mart','Household','Dish Soap',1,'piece',55]];
+$('s-load').onclick=()=>toast(addMany(SAMPLE.map(s=>({date:s[0],store:s[1],category:s[2],product:s[3],qty:s[4],unit:s[5],price:s[6],sample:true}))));
+$('s-rm').onclick=()=>{const ids=S.records.filter(r=>r.sample).map(r=>r.id);S.records=S.records.filter(r=>!r.sample);save();cloudDel(ids);renderAll();toast('Sample data removed')};
+$('clr').onclick=()=>{if(confirm('Delete ALL purchases? This cannot be undone.')&&prompt('Type DELETE to confirm')==='DELETE'){const ids=S.records.map(r=>r.id);S.records=[];save();cloudDel(ids);renderAll();toast('All data cleared')}};
+$('cur').oninput=e=>{S.settings.cur=e.target.value||'₹';save();renderAll()};
+
+/* ============ 6b. CLOUD LAYER (Supabase REST API, no SDK) ============ */
+// Config + login token live in this browser only. Table "purchases" is protected by Row Level Security (one user = own rows).
+const CK='pricemaster_cloud';let C={url:'',key:'',tok:'',ref:'',email:'',del:[],up:[]};
+try{Object.assign(C,JSON.parse(localStorage.getItem(CK)||'{}'))}catch(e){}
+const csave=()=>{try{localStorage.setItem(CK,JSON.stringify(C))}catch(e){}}, cstat=m=>{$('cstat').textContent=m};
+async function sb(path,o={},retry=true){
+ const r=await fetch(C.url.replace(/\/+$/,'')+path,{...o,headers:{apikey:C.key,Authorization:'Bearer '+(C.tok||C.key),'Content-Type':'application/json',...(o.headers||{})}});
+ if(r.status===401&&retry&&C.ref&&!path.startsWith('/auth')&&await refresh())return sb(path,o,false);
+ if(!r.ok){let m='';try{const j=await r.json();m=j.message||j.msg||j.error_description||''}catch(e){}throw new Error(m||('HTTP '+r.status))}
+ return r.status===204?null:r.json().catch(()=>null)}
+async function refresh(){try{const j=await sb('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:C.ref})},false);C.tok=j.access_token;C.ref=j.refresh_token;csave();return true}catch(e){C.tok='';csave();return false}}
+async function auth(signup){C.url=$('c-url').value.trim();C.key=$('c-key').value.trim();const em=$('c-em').value.trim(),pw=$('c-pw').value;
+ if(!C.url||!C.key||!em||pw.length<6){cstat('Enter URL, anon key, email and a password of 6+ characters.');return}
+ try{const j=await sb(signup?'/auth/v1/signup':'/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:em,password:pw})},false);
+  if(!j||!j.access_token){csave();cstat('Account created. Confirm the email if asked, then press Sign in.');return}
+  C.tok=j.access_token;C.ref=j.refresh_token;C.email=em;csave();$('c-pw').value='';await sync()}catch(e){cstat('Failed: '+e.message)}}
+async function flushDel(){for(let i=0;i<C.del.length;i+=100)await sb('/rest/v1/purchases?id=in.('+C.del.slice(i,i+100).map(x=>'"'+x+'"').join(',')+')',{method:'DELETE'});C.del=[];csave()}
+async function cloudDel(ids){if(!C.url||!ids.length)return;C.del=[...C.del,...ids];csave();if(!C.tok)return;try{await flushDel();cstat('Synced ✓')}catch(e){cstat('Delete pending – '+e.message+'. Press Sync now.')}}
+async function cloudUp(list){if(!C.url||!list.length)return;const mark=()=>{C.up=[...new Set([...C.up,...list.map(r=>r.id)])];csave()};
+ if(!C.tok){mark();return}
+ try{for(let i=0;i<list.length;i+=500)await sb('/rest/v1/purchases?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(list.slice(i,i+500).map(r=>({id:r.id,date:r.date,store:r.store,category:r.category,product:r.product,qty:r.qty,unit:r.unit,price:r.price,rate:r.rate,notes:r.notes,sample:!!r.sample})))});
+  const d=new Set(list.map(r=>r.id));C.up=C.up.filter(x=>!d.has(x));csave();cstat('Synced ✓')}catch(e){mark();cstat('Upload pending – '+e.message+'. Press Sync now.')}}
+// Full sync: send pending deletes/edits, pull everything from cloud, upload local-only records.
+async function sync(){if(!C.tok){cstat(C.url?'Signed out – data stays in this browser until you sign in.':'Cloud not set up – data is stored only in this browser.');return}
+ try{cstat('Syncing…');await flushDel();
+  const pend=new Set(C.up);if(pend.size){const l=S.records.filter(r=>pend.has(r.id));await cloudUp(l)}
+  let cloud=[];for(let from=0;;from+=1000){const p=await sb('/rest/v1/purchases?select=*&order=date.desc&limit=1000&offset='+from);cloud=cloud.concat(p||[]);if(!p||p.length<1000)break}
+  const ids=new Set(cloud.map(r=>r.id)),local=S.records.filter(r=>!ids.has(r.id));
+  S.records=[...cloud.map(clean).filter(Boolean),...local];save();await cloudUp(local);renderAll();cstat(`Synced ✓ ${S.records.length} records (${C.email})`)}
+ catch(e){cstat('Sync failed: '+e.message+' (working from the local copy)')}}
+function cloudInit(){$('c-url').value=C.url;$('c-key').value=C.key;$('c-em').value=C.email;
+ $('c-in').onclick=()=>auth(false);$('c-up').onclick=()=>auth(true);$('c-sync').onclick=()=>{C.url=$('c-url').value.trim();C.key=$('c-key').value.trim();csave();sync()};
+ $('c-out').onclick=()=>{C.tok=C.ref='';csave();cstat('Signed out.')};
+ window.addEventListener('online',()=>sync());sync()}
+
+/* ============ 7. TABS + INIT ============ */
+const TABS=[['add','Add'],['hist','History'],['cheap','Cheapest Finder'],['dash','Dashboard'],['data','Data']];
+$('tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" data-t="${k}" aria-selected="false">${l}</button>`).join('');
+function tab(k){TABS.forEach(([t])=>{$('t-'+t).classList.toggle('on',t===k);$('tabs').querySelector(`[data-t=${t}]`).setAttribute('aria-selected',t===k)});renderAll()}
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(b)tab(b.dataset.t)};
+function renderAll(){renderLists();renderHist();renderCheap();renderDash();liveRate()}
+load();fillUnits();$('date').value=today();$('cur').value=S.settings.cur;save();tab('add');cloudInit();
+</script></body></html>
